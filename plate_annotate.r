@@ -46,6 +46,14 @@ condition_wells <- function(wells,cname,value) {
 	
 }
 
+add_zero_to_single <- function(x) {
+	if (as.integer(x) < 10) {
+		paste("0",as.character(x),sep="")
+	} else {
+		x
+	}
+}
+
 annotate_plate <- function(df,type=96,plate=1,area=2,condition=3,value=4) {
 # For stuff replicated across plates, can use this with by functions	
 # DF provided needs Plate, Area, Condition, Value columns with indexes as in default args
@@ -53,16 +61,18 @@ annotate_plate <- function(df,type=96,plate=1,area=2,condition=3,value=4) {
 	# set up the plate types 
 	nplates = length(unique(df[,plate]))
 	if (type == 96) {
-		wells = wellrange("A1-H12")
+		fullplate = "A1-H12"
 	} else {
 		if (type == 384) {
-			wells = wellrange("A1-P24")
+			fullplate <- "A1-P24"
 		}
 	}	
-	
+	wells = wellrange(fullplate)	
 	# Apply the annotation
+	# If Area is empty, apply to whole plate
+	df[df[,area] == "",area] <- fullplate
+
 	# If Plates field is empty, apply to all plates
-	# To apply to all wells, need to enter the full range e.g. A1-H12) - could add something to do this automatically
 	plate_empty <- df[is.na(df[,plate]),]
 
 	if (nrow(plate_empty) != 0) {
@@ -105,7 +115,10 @@ annotate_plate <- function(df,type=96,plate=1,area=2,condition=3,value=4) {
 		annolist[[i]] <- tempplates
 	}
 	red <- Reduce(function(x,y) merge(x,y,all=T),annolist)	
-	red[!apply(red,1,function(x) any(is.na(x))),]
+	red <- red[!apply(red,1,function(x) any(is.na(x))),]
+	# Add leading zeros and make a Well column by combining row + zerocolumn
+	red$Well <- paste(red$Row, sapply(red$Column,add_zero_to_single),sep="")
+	red
 	
 }
 library(lattice)
